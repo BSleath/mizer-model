@@ -120,6 +120,7 @@ ggsave("figures/flux_plot_with_fishing.png",
 
 
 
+# Changing parameters -----------------------------------------------------
 # Make local reductions in resource replenishment rate and resource capacity
 
 # Calculate flux
@@ -196,10 +197,28 @@ initialNResource(params_reduced) <- initialNResource(params_reduced)/2
 params_reduced <- setResource(params_reduced,
                                    resource_capacity = rc)
 
-sim_reduced <- project(params_reduced, t_max = 15, effort = 1)
 
+# Narrow predation kernel
+pred_kernel <- getPredKernel(params_reduced)
+
+pred_kernel_reduced <- pred_kernel[, , 180, drop = FALSE]
+
+ggplot(melt(pred_kernel_reduced)) +
+  geom_line(aes(x = w_pred, y = value)) +
+  scale_x_log10()
+
+select(species_params(params_reduced), beta, sigma)
+given_species_params(params_reduced)$sigma <- 0.4
+
+getPredKernel(params_reduced)[, , 180, drop = FALSE] %>% 
+  melt() %>% 
+  ggplot() +
+  geom_line(aes(x = w_pred, y = value)) +
+  scale_x_log10()
 
 # Calculate new flux
+sim_reduced <- project(params_reduced, t_max = 15, effort = 1)
+
 N_reduced <- finalN(sim_reduced)["Target species", , drop = TRUE]
 
 E_growth_reduced <- getEGrowth(params_reduced)["Target species", , drop = TRUE]
