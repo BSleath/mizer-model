@@ -124,11 +124,10 @@ ggsave("figures/flux_plot_with_fishing.png",
 # Make local reductions in resource replenishment rate and resource capacity
 
 # Calculate flux
-sim_rr <- project(params_rr, t_max = 15, effort = 1)
-N <- finalN(sim_rr)["Target species", , drop = TRUE]
-w <- w(params_rr)
+N <- finalN(sim_double)["Target species", , drop = TRUE]
+w <- w(params_double)
 
-E_growth <- getEGrowth(params_rr)["Target species", , drop = TRUE]
+E_growth <- getEGrowth(params_double)["Target species", , drop = TRUE]
 gr <- w * E_growth
 flux <- gr * N
 
@@ -150,15 +149,15 @@ initial_flux_plot
 
 
 # Reduce rr
-rr <- resource_rate(params_rr)
-w_full <- w_full(params_rr)
-w_full[180:240]
-rr[180:240] <- rr[180:240] / 10000000
+rr <- resource_rate(params_double)
+w_full <- w_full(params_double)
+w_full[215:240]
+rr[215:240] <- rr[215:240] / 100000000
 
 
 # Plot resource rate against weight to check reduction
 rr_data <- data.frame(
-  Weight = params_rr@w_full,
+  Weight = params_double@w_full,
   rr = rr
 )
 
@@ -170,17 +169,15 @@ rr_plot <- ggplot(rr_data,
   theme_classic()
 rr_plot
 
-params_reduced <- setResource(params_rr,
-                                   resource_rate = rr)
 
 # Reduce resource capacity
-rc <- resource_capacity(params_reduced)
-w_full[180:240]
-rc[180:240] <- rc[180:240] / 5000
+rc <- resource_capacity(params_double)
+w_full[215:240]
+rc[215:240] <- rc[215:240] / 10000
 
 # Plot resource capacity over weights to see reduction
 rc_data <- data.frame(
-  Weight = params_rr@w_full,
+  Weight = params_double@w_full,
   rc = rc
 )
 
@@ -192,23 +189,26 @@ rc_plot <- ggplot(rc_data,
   theme_classic()
 rc_plot
 
-initialN(params_reduced) <- 2*initialN(params_reduced)
-initialNResource(params_reduced) <- initialNResource(params_reduced)/2
-params_reduced <- setResource(params_reduced,
-                                   resource_capacity = rc)
+params_reduced <- setResource(params_double,
+                              resource_capacity = rc,
+                              resource_rate = rr,
+                              balance =  FALSE)
+
+gear_params(params_reduced)
 
 
 # Narrow predation kernel
 pred_kernel <- getPredKernel(params_reduced)
 
-pred_kernel_reduced <- pred_kernel[, , 180, drop = FALSE]
+pred_kernel_reduced <- pred_kernel[, , 215, drop = FALSE]
 
 ggplot(melt(pred_kernel_reduced)) +
   geom_line(aes(x = w_pred, y = value)) +
   scale_x_log10()
 
 select(species_params(params_reduced), beta, sigma)
-given_species_params(params_reduced)$sigma <- 0.4
+given_species_params(params_reduced)$sigma <- 0.2
+given_species_params(params_reduced)$beta <- 100
 
 getPredKernel(params_reduced)[, , 180, drop = FALSE] %>% 
   melt() %>% 
@@ -216,10 +216,17 @@ getPredKernel(params_reduced)[, , 180, drop = FALSE] %>%
   geom_line(aes(x = w_pred, y = value)) +
   scale_x_log10()
 
+
+# lower maximum intake rate
+species_params(params_reduced)$h
+given_species_params(params_reduced)$h <- 30
+
+
 # Calculate new flux
 sim_reduced <- project(params_reduced, t_max = 15, effort = 1)
 
 N_reduced <- finalN(sim_reduced)["Target species", , drop = TRUE]
+w <- w(params_reduced)
 
 E_growth_reduced <- getEGrowth(params_reduced)["Target species", , drop = TRUE]
 grr <- w * E_growth_reduced
@@ -237,7 +244,7 @@ reduced_flux_plot <- ggplot(reduced_flux_data,
   labs(
     x = paste0("Weight (g)"),
     y = paste0("Flux (g/year)"),
-    title = "Flux with reduced resource replenishment rate and resource capacity") +
+    title = "Flux with locally reduced resource replenishment rate and resource capacity") +
   theme_classic()
 
 initial_flux_plot
