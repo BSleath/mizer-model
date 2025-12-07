@@ -29,9 +29,9 @@ initialNResource(params_double) <- initialNResource(params_double)/2
 gear_params(params_double) <- data.frame(
   gear = "gear",
   species = "Target species",
-  catchability = 0.2,
+  catchability = 0.3,
   sel_func = "sigmoid_weight",
-  sigmoidal_weight = 30,
+  sigmoidal_weight = 15,
   sigmoidal_sigma = 5)
 
 params_double <- setFishing(params_double, gear_params = gear_params)
