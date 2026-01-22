@@ -22,6 +22,11 @@ params_double <- setResource(params_double,
 initialN(params_double) <- 2*initialN(params_double)
 initialNResource(params_double) <- initialNResource(params_double)/2
 
+# Set Reproduction parameters
+getReproductionProportion(params_double)
+repro_prop(params_double) <- repro_prop(params_double)/3
+
+
 # Fishing gear ------------------------------------------------------------
 
 # Set up fishing gear using sigmoid_weight() selectivity function
@@ -152,8 +157,7 @@ initial_flux_plot
 rr <- resource_rate(params_double)
 w_full <- w_full(params_double)
 w_full[215:240]
-rr[215:240] <- rr[215:240] / 100000000
-
+rr[215:240] <- rr[215:240] / 100000
 
 # Plot resource rate against weight to check reduction
 rr_data <- data.frame(
@@ -192,7 +196,7 @@ rc_plot
 params_reduced <- setResource(params_double,
                               resource_capacity = rc,
                               resource_rate = rr,
-                              balance =  FALSE)
+                              balance = FALSE)
 
 gear_params(params_reduced)
 
@@ -239,7 +243,6 @@ reduced_flux_data <- data.frame(Weight = w,
 reduced_flux_plot <- ggplot(reduced_flux_data,
                          aes(x = Weight, y = Flux)) +
   geom_smooth() +
-  scale_x_log10() +
   scale_y_log10() +
   labs(
     x = paste0("Weight (g)"),
@@ -279,12 +282,12 @@ growth_plot <- ggplot(growth_data,
        aes(x = weight,
            y = growth)) +
   geom_smooth() +
-  scale_x_log10() +
   scale_y_log10() +
   labs(x = paste0("Weight (g)"),
        y = paste0("Growth Rate (g/year)"),
        title = "Growth rate of fish across increasing size classes") +
   theme_classic()
+growth_plot
 
 ggsave("figures/growth_rate_plot.png",
        plot = growth_plot,
@@ -293,3 +296,6 @@ ggsave("figures/growth_rate_plot.png",
        height = 6,
        units = "in",
        dpi = 300)
+
+## reproduction
+getRDD(params_reduced)
