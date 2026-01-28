@@ -23,14 +23,17 @@ library(tidyverse)
 ```{r}
 #| message: false
 #| warning: false
-params <- newSingleSpeciesParams()
-params_initial <- setResource(params,
+params_single <- newSingleSpeciesParams()
+params_initial <- setResource(params_single,
                       resource_dynamics = "resource_semichemostat")
 params_double <- params_initial
 params_double <- setResource(params_double,
                              resource_level = 0.1)
+
 initialN(params_double) <- 2*initialN(params_double)
 initialNResource(params_double) <- initialNResource(params_double)/2
+
+repro_prop(params_double) <- repro_prop(params_double)/3
 
 ```
 
@@ -107,13 +110,11 @@ initial_flux_plot
 #| warning: false
 rr <- resource_rate(params_double)
 w_full <- w_full(params_double)
-w_full[215:240]
-rr[215:240] <- rr[215:240] / 100000000
+rr[230:250] <- rr[230:250] / 1000000
 
 rr_data <- data.frame(
   Weight = params_double@w_full,
-  rr = rr
-)
+  rr = rr)
 
 rr_plot <- ggplot(rr_data, 
                   aes(x = Weight, y = rr)) +
@@ -130,8 +131,7 @@ rr_plot
 #| message: false
 #| warning: false
 rc <- resource_capacity(params_double)
-w_full[215:240]
-rc[215:240] <- rc[215:240] / 10000
+rc[230:250] <- rc[230:250] / 1000000
 
 rc_data <- data.frame(
   Weight = params_double@w_full,
@@ -153,7 +153,7 @@ rc_plot
 params_reduced <- setResource(params_double,
                               resource_capacity = rc,
                               resource_rate = rr,
-                              balance =  FALSE)
+                              balance = FALSE)
 ```
 
 ## Narrow predation kernel
@@ -161,21 +161,24 @@ params_reduced <- setResource(params_double,
 ```{r}
 pred_kernel <- getPredKernel(params_reduced)
 
-pred_kernel_reduced <- pred_kernel[, , 215, drop = FALSE]
+pred_kernel_reduced <- pred_kernel[, 89, , drop = FALSE]
 
 ggplot(melt(pred_kernel_reduced)) +
-  geom_line(aes(x = w_pred, y = value)) +
-  scale_x_log10()
+  geom_line(aes(x = w_prey, y = value)) +
+  scale_x_log10(limits = c(1e-4, 100))
 
 select(species_params(params_reduced), beta, sigma)
-given_species_params(params_reduced)$sigma <- 0.2
-given_species_params(params_reduced)$beta <- 100
 
-getPredKernel(params_reduced)[, , 180, drop = FALSE] %>% 
+params <- params_reduced
+
+given_species_params(params)$sigma <- 0.3
+given_species_params(params)$beta <- 100
+
+getPredKernel(params)[, 89, , drop = FALSE] %>% 
   melt() %>% 
   ggplot() +
-  geom_line(aes(x = w_pred, y = value)) +
-  scale_x_log10()
+  geom_line(aes(x = w_prey, y = value)) +
+  scale_x_log10(limits = c(1e-4, 100))
 ```
 
 ## Calculate flux after local reductions in resource parameters
@@ -183,23 +186,42 @@ getPredKernel(params_reduced)[, , 180, drop = FALSE] %>%
 ```{r}
 #| message: false
 #| warning: false
-sim_reduced <- project(params_reduced, t_max = 15, effort = 1)
+sim_reduced <- project(params, t_max = 15, effort = 1)
 
 N_reduced <- finalN(sim_reduced)["Target species", , drop = TRUE]
 w <- w(params_reduced)
 
-E_growth_reduced <- getEGrowth(params_reduced)["Target species", , drop = TRUE]
+E_growth_reduced <- getEGrowth(params)["Target species", , drop = TRUE]
 grr <- w * E_growth_reduced
 flux_reduced <- grr * N_reduced
 
-
 reduced_flux_data <- data.frame(Weight = w, 
                              Flux = flux_reduced)
+```
 
-reduced_flux_plot <- ggplot(reduced_flux_data,
+##### Plot on a log-log axis
+
+```{r}
+reduced_flux_log_plot <- ggplot(reduced_flux_data,
                          aes(x = Weight, y = Flux)) +
   geom_smooth() +
+  scale_y_log10() +
   scale_x_log10() +
+  labs(
+    x = paste0("Weight (g)"),
+    y = paste0("Flux (g/year)"),
+    title = "Flux with locally reduced resource replenishment rate and resource capacity") +
+  theme_classic()
+
+reduced_flux_log_plot
+```
+
+##### Plot on log y-axis
+
+```{r}
+reduced_flux_plot <- ggplot(reduced_flux_data,
+                            aes(x = Weight, y = Flux)) +
+  geom_smooth() +
   scale_y_log10() +
   labs(
     x = paste0("Weight (g)"),
@@ -210,11 +232,23 @@ reduced_flux_plot <- ggplot(reduced_flux_data,
 reduced_flux_plot
 ```
 
-## Extract yield
+## Flux over a limited weight range
 
 ```{r}
-getYieldGear(sim_reduced)
-plotYieldGear(sim_reduced)
+limited_flux_data <- data.frame(Weight = w[89:101], 
+                                Flux = flux_reduced[89:101])
+
+limited_flux_log_plot <- ggplot(limited_flux_data,
+                                aes(x = Weight, y = Flux)) +
+  geom_smooth() +
+  scale_y_log10() +
+  scale_x_log10(limits = c(25, 100)) +
+  labs(
+    x = paste0("Weight (g)"),
+    y = paste0("Flux (g/year)")) +
+  theme_classic()
+
+limited_flux_log_plot
 ```
 
 ## Plot growth rate against weight
@@ -226,11 +260,29 @@ growth_plot <- ggplot(growth_data,
        aes(x = weight,
            y = growth)) +
   geom_smooth() +
-  scale_x_log10() +
   scale_y_log10() +
   labs(x = paste0("Weight (g)"),
        y = paste0("Growth Rate (g/year)"),
        title = "Growth rate of fish across increasing size classes") +
   theme_classic()
 growth_plot
+```
+
+## Plot yield
+
+```{r}
+yield <- getYield(sim_reduced)
+time <- getTimes(sim_reduced)
+
+yield_data <- data.frame(Time = time, 
+                         Yield = yield)
+
+yield_graph <- ggplot(yield_data, 
+                     aes(x = Time, y = Target.species)) + 
+  geom_line() +
+  scale_y_log10() +
+  labs(x = paste0("Weight (year)"),
+       y = paste0("Yield (g/year)") ) +
+  theme_classic()
+  yield_graph
 ```
