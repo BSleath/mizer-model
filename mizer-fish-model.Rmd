@@ -1,0 +1,254 @@
+---
+title: "Mizer-Fish-Model"
+author: "Bethan Sleath"
+date: "2026-02-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mizer)
+library(mizerExperimental)
+library(tidyverse)
+library(plotly)
+library(dplyr)
+```
+
+## Setting up model
+
+We set the parameters of the model to be a single species model with semi-chemostatic resource dynamics. Initial conditions for resource and fish abundance are altered.
+
+```{r}
+params_single <- newSingleSpeciesParams()
+params_initial <- setResource(params_single,
+                      resource_dynamics = "resource_semichemostat")
+params_double <- params_initial
+params_double <- setResource(params_double,
+                             resource_level = 0.05)
+
+initialN(params_double) <- 2*initialN(params_double)
+initialNResource(params_double) <- initialNResource(params_double)/2
+```
+
+## Fishing gear
+
+```{r}
+gear_params(params_double) <- data.frame(
+  gear = "gear",
+  species = "Target species",
+  catchability = 0.8,
+  sel_func = "sigmoid_weight",
+  sigmoidal_weight = 15,
+  sigmoidal_sigma = 5)
+
+params_double <- setFishing(params_double, gear_params = gear_params)
+
+gear_params(params_double)
+```
+
+## Locally reduce the resource rate and resource capacity
+
+### Resource rate
+
+```{r}
+rr <- resource_rate(params_double)
+w_full <- w_full(params_double)
+rr[192:232] <- rr[192:232] / 2
+
+rr_data <- data.frame(
+  Weight = params_double@w_full,
+  rr = rr)
+
+rr_plot <- ggplot(rr_data, 
+                  aes(x = Weight, y = rr)) +
+  geom_smooth() +
+  scale_x_log10() + 
+  scale_y_log10() +
+  theme_classic()
+rr_plot
+```
+
+### Resource capacity
+
+```{r}
+rc <- resource_capacity(params_double)
+rc[192:232] <- rc[192:232] / 5
+
+rc_data <- data.frame(
+  Weight = params_double@w_full,
+  rc = rc
+)
+
+rc_plot <- ggplot(rc_data, 
+                  aes(x = Weight, y = rc)) +
+  geom_smooth() +
+  scale_x_log10() + 
+  scale_y_log10() +
+  theme_classic()
+rc_plot
+```
+
+### Set new parameters with reductions local reductions
+
+```{r}
+params_reduced <- setResource(params_double,
+                              resource_capacity = rc,
+                              resource_rate = rr,
+                              balance = FALSE)
+```
+
+## Narrow predation kernel
+
+```{r}
+pred_kernel <- getPredKernel(params_reduced)
+pred_kernel_reduced <- pred_kernel[, 89, , drop = FALSE]
+
+ggplot(melt(pred_kernel_reduced)) +
+  geom_line(aes(x = w_prey, y = value)) +
+  scale_x_log10(limits = c(1e-4, 100))
+
+select(species_params(params_reduced), beta, sigma)
+
+params <- params_reduced
+
+given_species_params(params)$sigma <- 0.8
+given_species_params(params)$beta <- 1000
+
+getPredKernel(params)[, 89, , drop = FALSE] %>% 
+  melt() %>% 
+  ggplot() +
+  geom_line(aes(x = w_prey, y = value)) +
+  scale_x_log10(limits = c(1e-4, 100))
+```
+
+## Calculate flux of system
+
+```{r}
+sim_reduced <- project(params, t_max = 30, effort = 1)
+
+N_reduced <- finalN(sim_reduced)["Target species", , drop = TRUE]
+w <- w(params_reduced)
+
+E_growth_reduced <- getEGrowth(params)["Target species", , drop = TRUE]
+grr <- w * E_growth_reduced
+flux_reduced <- grr * N_reduced
+
+
+reduced_flux_data <- data.frame(Weight = w, 
+                             Flux = flux_reduced)
+reduced_flux_data$species = "Target Species"
+
+plot_ly(reduced_flux_data) |> 
+  add_lines(x = ~Weight, y = ~Flux, color = ~species) |> 
+  layout(yaxis = list(type = "log", exponentformat = "power",
+                              title_text = "Flux (g/year)"),
+         xaxis = list(type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)"))
+```
+
+## Plot flux over limited weight range
+
+```{r}
+limited_flux_data <- data.frame(Weight = w[89:101], 
+                                Flux = flux_reduced[89:101])
+limited_flux_data$Species = "Target Species"
+
+plot_ly(limited_flux_data) |> 
+  add_lines(x = ~Weight, y = ~Flux, color = ~Species) |> 
+  layout(yaxis = list(type = "log", exponentformat = "power",
+                      title_text = "Flux (g/year)"),
+         xaxis = list(type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)"))
+```
+
+## Plot growth rate
+
+```{r}
+growth_data <- data.frame(growth = E_growth_reduced,
+                          weight = w)
+growth_data$Species = "Target Species"
+
+plot_ly(growth_data) |> 
+  add_lines(x = ~weight, y = ~growth, color = ~Species) |> 
+  layout(yaxis = list(#type = "log", exponentformat = "power",
+                      title_text = "Growth Rate (g/year)"),
+         xaxis = list(#type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)"))
+```
+
+## Plot growth rate over limited weight range
+```{r}
+limited_growth_data <- data.frame(growth = E_growth_reduced[89:101],
+                          weight = w[89:101])
+limited_growth_data$species = "Target Species"
+plot_ly(limited_growth_data) |> 
+  add_lines(x = ~weight, y = ~growth, color = ~species) |> 
+  layout(yaxis = list(#type = "log", exponentformat = "power",
+    title_text = "Growth Rate (g/year)"),
+    xaxis = list(#type = "log", exponentformat = "power", 
+      title_text = "Weight (g)"))
+```
+
+## biomass spectra
+```{r}
+plotSpectra(sim_reduced, power = 2, wlim = c(1e-8, NA), ylim = c(1e-8, NA),
+            time_range = 30)
+```
+
+## Animation of biomass abundance
+```{r}
+nf <- melt(sim_reduced@n)
+n_ppf <- melt(sim_reduced@n_pp)
+n_ppf$sp <- "Resource"
+nf <- rbind(nf, n_ppf)
+
+plot_ly(nf) %>%
+  # show only part of plankton spectrum
+  filter(w > 10^-5) %>% 
+  # start at time 20
+  #filter(time >= 26) %>% 
+  # calculate biomass density with respect to log size
+  mutate(b = value * w^2) %>% 
+  # Plot lines
+  add_lines(
+    x = ~w, y = ~b,
+    color = ~sp,
+    frame = ~time,
+    line = list(simplify = FALSE)
+  ) %>% 
+  # Use logarithmic axes
+  layout(params, xaxis = list(type = "log", exponentformat = "power",
+                         title_text = "body mass (g)"),
+         yaxis = list(type = "log", exponentformat = "power",
+                      title_text = "biomass (g/m^3)",
+                      range = c(-8, 0)))
+```
+
+## Animation of flux
+```{r}
+species <- "Target species"
+time <- getTimes(sim_reduced)
+
+flux_series <- lapply(seq_along(time), function(i) {
+  n_at_t <- sim_reduced@n[i, species, ]
+  data.frame(
+    Time = time[i],
+    Weight = w,
+    Flux = n_at_t * grr)
+}) %>% bind_rows()
+
+flux_series$Species <- species
+
+plot_ly(flux_series) %>% 
+  add_lines(x ~Weight, 
+            y ~Flux, 
+            color = ~Species, 
+            frame = ~Time, 
+            line = list(simplify = FALSE)) %>%  
+  layout(params, xaxis = list(type = "log", exponentformat = "power",
+                         title_text = "body mass (g)"),
+         yaxis = list(type = "log", exponentformat = "power",
+                      title_text = "flux (g/year)", 
+                      range = c(-8, 2)))
+```
+
