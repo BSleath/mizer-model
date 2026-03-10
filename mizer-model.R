@@ -3,8 +3,10 @@
 library(mizer)
 library(mizerExperimental)
 library(tidyverse)
+library(ggplot2)
 library(plotly)
 library(dplyr)
+library(reticulate)
 
 
 # Setting parameters ------------------------------------------------------
@@ -25,10 +27,6 @@ params_double <- setResource(params_double,
 initialN(params_double) <- 2*initialN(params_double)
 initialNResource(params_double) <- initialNResource(params_double)/2
 
-# Set Reproduction parameters
-#getReproductionProportion(params_double)
-#repro_prop(params_double) <- repro_prop(params_double)/3
-
 
 # Fishing gear ------------------------------------------------------------
 
@@ -37,10 +35,10 @@ initialNResource(params_double) <- initialNResource(params_double)/2
 gear_params(params_double) <- data.frame(
   gear = "gear",
   species = "Target species",
-  catchability = 0.8,
+  catchability = 1,
   sel_func = "sigmoid_weight",
-  sigmoidal_weight = 15,
-  sigmoidal_sigma = 5)
+  sigmoidal_weight = 25,
+  sigmoidal_sigma = 10)
 
 params_double <- setFishing(params_double, gear_params = gear_params)
 
@@ -51,7 +49,7 @@ gear_params(params_double)
 
 # Simulate biomass density when initial biomass is doubled and initial resources
 # are reduced
-sim_double <- project(params_double, t_max = 20, effort = 1)
+sim_double <- project(params_double, t_max = 50, effort = 1)
 animateSpectra(sim_double, total = FALSE, power = 2, 
                ylim = c(1e-8, NA), wlim = c(1e-3, NA))
 
@@ -109,8 +107,9 @@ plotSpectra(params_double, power = 2)
 # Reduce rr
 rr <- resource_rate(params_double)
 w_full <- w_full(params_double)
-w_full[192:232]
-rr[192:232] <- rr[192:232] / 2
+w_full[182:242]
+rr[182:242] <- rr[182:242] / 2
+
 
 # Plot resource rate against weight to check reduction
 rr_data <- data.frame(
@@ -119,7 +118,7 @@ rr_data <- data.frame(
 
 rr_plot <- ggplot(rr_data, 
                   aes(x = Weight, y = rr)) +
-  geom_smooth() +
+  geom_line() +
   scale_x_log10() + 
   scale_y_log10() +
   theme_classic()
@@ -128,8 +127,8 @@ rr_plot
 
 # Reduce resource capacity
 rc <- resource_capacity(params_double)
-w_full[202:222]
-rc[192:232] <- rc[192:232] / 5
+w_full[182:242]
+rc[182:242] <- rc[182:242] / 5
 
 # Plot resource capacity over weights to see reduction
 rc_data <- data.frame(
@@ -139,7 +138,7 @@ rc_data <- data.frame(
 
 rc_plot <- ggplot(rc_data, 
                   aes(x = Weight, y = rc)) +
-  geom_smooth() +
+  geom_line() +
   scale_x_log10() + 
   scale_y_log10() +
   theme_classic()
@@ -156,11 +155,13 @@ params_reduced <- setResource(params_double,
 pred_kernel <- getPredKernel(params_reduced)
 pred_kernel
 
+
+
 pred_kernel_reduced <- pred_kernel[, 89, , drop = FALSE]
 
 ggplot(melt(pred_kernel_reduced)) +
   geom_line(aes(x = w_prey, y = value)) +
-  scale_x_log10(limits = c(1e-4, 100))
+  scale_x_log10(limits = c(1e-4, 1000))
 
 select(species_params(params_reduced), beta, sigma)
 
@@ -176,13 +177,18 @@ getPredKernel(params)[, 89, , drop = FALSE] %>%
   scale_x_log10(limits = c(1e-4, 100))
 
 
+## reducing feeding level
+#feeding <- getFeedingLevel(params)
+#w[81:88]
+#feeding[81:88] <- feeding[81:88] / 5
+#feeding
 
 
 # Calculate new flux
-sim_reduced <- project(params, t_max = 30, effort = 1)
+sim_reduced <- project(params, t_max = 50, effort = 1)
 
 N_reduced <- finalN(sim_reduced)["Target species", , drop = TRUE]
-w <- w(params_reduced)
+w <- w(params)
 
 E_growth_reduced <- getEGrowth(params)["Target species", , drop = TRUE]
 grr <- w * E_growth_reduced
@@ -191,14 +197,12 @@ flux_reduced <- grr * N_reduced
 
 reduced_flux_data <- data.frame(Weight = w, 
                              Flux = flux_reduced)
-reduced_flux_data$species = "Target Species"
+#reduced_flux_data$species = "Target Species"
 
 # Plot flux on log-log axis
 
-flux_plot <- ggplot(reduced_flux_data, aes(x = Weight, y = Flux))
-
 plot_ly(reduced_flux_data) |> 
-  add_lines(x = ~Weight, y = ~Flux, color = ~species) |> 
+  add_lines(x = ~Weight, y = ~Flux) |> 
   layout(yaxis = list(type = "log", exponentformat = "power",
                               title_text = "Flux (g/year)"),
          xaxis = list(type = "log", exponentformat = "power", 
@@ -252,10 +256,9 @@ ggsave("figures/flux_plot_reduced.png",
 
 limited_flux_data <- data.frame(Weight = w[89:101], 
                                 Flux = flux_reduced[89:101])
-limited_flux_data$Species = "Target Species"
 
 plot_ly(limited_flux_data) |> 
-  add_lines(x = ~Weight, y = ~Flux, color = ~Species) |> 
+  add_lines(x = ~Weight, y = ~Flux) |> 
   layout(yaxis = list(type = "log", exponentformat = "power",
                       title_text = "Flux (g/year)"),
          xaxis = list(type = "log", exponentformat = "power", 
@@ -313,6 +316,11 @@ time <- getTimes(sim_reduced)
 yield_data <- data.frame(Time = time, 
                          Yield = yield)
 
+plot_ly(yield_data) |> 
+  add_lines(x = ~Time, y = ~Target.species) |> 
+  layout(yaxis = list(type = "log", title_text = "Yield (g/year)"),
+         xaxis = list(title_text = "Year"))
+
 yield_graph <- ggplot(yield_data, 
                      aes(x = Time, y = Target.species)) + 
   geom_line() +
@@ -337,10 +345,9 @@ ggsave("figures/yield_plot",
 ## growth rate plot
 growth_data <- data.frame(growth = E_growth_reduced,
                           weight = w)
-growth_data$Species = "Target Species"
 
 plot_ly(growth_data) |> 
-  add_lines(x = ~weight, y = ~growth, color = ~Species) |> 
+  add_lines(x = ~weight, y = ~growth) |> 
   layout(yaxis = list(#type = "log", exponentformat = "power",
                       title_text = "Growth Rate (g/year)"),
          xaxis = list(#type = "log", exponentformat = "power", 
@@ -371,10 +378,9 @@ ggsave("figures/growth_rate_plot.png",
 
 limited_growth_data <- data.frame(growth = E_growth_reduced[89:101],
                           weight = w[89:101])
-limited_growth_data$species = "Target Species"
 
 plot_ly(limited_growth_data) |> 
-  add_lines(x = ~weight, y = ~growth, color = ~species) |> 
+  add_lines(x = ~weight, y = ~growth) |> 
   layout(yaxis = list(#type = "log", exponentformat = "power",
     title_text = "Growth Rate (g/year)"),
     xaxis = list(#type = "log", exponentformat = "power", 
@@ -406,7 +412,7 @@ ggsave("figures/limited_growth_rate_plot.png",
 getRDD(params)
 
 
-plotSpectra(sim_reduced, power = 2, wlim = c(1e-8, NA), ylim = c(1e-5, NA),
+plotSpectra(sim_reduced, power = 2, wlim = c(1e-8, NA), ylim = c(1e-8, NA),
             time_range = 30)
 
 
@@ -465,3 +471,236 @@ plot_ly(flux_series) %>%
                       title_text = "flux (g/year)", 
                       range = c(-8, 2)))
 
+
+# flux with medium fishing effort
+
+sim_med <- project(params, t_max = 50, effort = 5)
+
+N_med <- finalN(sim_med)["Target species", , drop = TRUE]
+
+flux_med <- grr * N_med
+
+medium_flux_data <- data.frame(Weight = w, 
+                                Flux = flux_med)
+
+plot_ly(medium_flux_data) |> 
+  add_lines(x = ~Weight, y = ~Flux) |> 
+  layout(yaxis = list(type = "log", exponentformat = "power",
+                      title_text = "Flux (g/year)"),
+         xaxis = list(type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)"))
+
+
+# flux with higher fishing effort
+
+sim_heavy <- project(params, t_max = 50, effort = 10)
+
+N_heavy <- finalN(sim_heavy)["Target species", , drop = TRUE]
+w <- w(params)
+
+E_growth_reduced <- getEGrowth(params)["Target species", , drop = TRUE]
+grr <- w * E_growth_reduced
+flux_heavy <- grr * N_heavy
+
+
+fishing_flux_data <- data.frame(Weight = w, 
+                                Flux = flux_heavy)
+#fishing_flux_data$species = "Target Species"
+
+plot_ly(fishing_flux_data) |> 
+  add_lines(x = ~Weight, y = ~Flux) |> 
+  layout(yaxis = list(type = "log", exponentformat = "power",
+                      title_text = "Flux (g/year)"),
+         xaxis = list(type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)"))
+
+
+fishing_flux_log_plot <- ggplot(fishing_flux_data,
+                                aes(x = Weight, y = Flux)) +
+  geom_smooth() +
+  scale_y_log10() +
+  scale_x_log10() +
+  labs(
+    x = paste0("Weight (g)"),
+    y = paste0("Flux (g/year)")) +
+  theme_classic()
+
+fishing_flux_log_plot
+reduced_flux_log_plot
+
+ggsave("figures/flux_plot_fishing.png",
+       plot = fishing_flux_log_plot,
+       device = "png",
+       width = 8,
+       height = 6,
+       units = "in",
+       dpi = 300)
+
+# compare plots on same axis
+
+reduced_flux_data$Effort = "Low fishing effort"
+medium_flux_data$Effort = "Medium fishing effort"
+fishing_flux_data$Effort = "High fishing effort"
+
+
+fishing_flux <- rbind(fishing_flux_data, medium_flux_data, reduced_flux_data)
+
+plot_ly(fishing_flux) |> 
+  add_lines(x = ~Weight, y = ~Flux, color = ~Effort) |> 
+  layout(yaxis = list(type = "log", exponentformat = "power",
+                      title_text = "Flux (g/year)"),
+         xaxis = list(type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)"))
+
+
+# biomass ratio between fishing effort
+
+biomass_reduced <- N_reduced * w
+biomass_medium <- N_med * w
+biomass_heavy <- N_heavy * w
+
+# biomass ratio - low and medium
+
+biomass_ratio_lm <- biomass_medium / biomass_reduced
+
+biomass_ratio_lm_data <- data.frame(Weight = w(params),
+                                    Ratio = biomass_ratio_lm)
+
+plot_ly(biomass_ratio_lm_data) |> 
+  add_lines(x = ~Weight, y = ~Ratio, type = "scatter") |> 
+  layout(yaxis = list(#type = "log", exponentformat = "power",
+    title_text = "Biomass ratio"),
+    xaxis = list(#type = "log", exponentformat = "power", 
+      title_text = "Weight (g)"))
+
+# biomass ratio - medium and high
+
+biomass_ratio_mh <- biomass_heavy / biomass_medium
+
+biomass_ratio_mh_data <- data.frame(Weight = w(params),
+                                    Ratio = biomass_ratio_mh)
+
+plot_ly(biomass_ratio_mh_data) |> 
+  add_lines(x = ~Weight, y = ~Ratio, type = "scatter") |> 
+  layout(yaxis = list(#type = "log", exponentformat = "power",
+    title_text = "Biomass ratio"),
+    xaxis = list(#type = "log", exponentformat = "power", 
+      title_text = "Weight (g)"))
+
+# biomass ratio - low and high
+biomass_ratio_lh <- biomass_heavy / biomass_reduced
+
+biomass_ratio_lh_data <- data.frame(Weight = w(params),
+                                 Ratio = biomass_ratio_lh)
+
+plot_ly(biomass_ratio_lh_data) |> 
+  add_lines(x = ~Weight, y = ~Ratio, type = "scatter") |> 
+  layout(yaxis = list(#type = "log", exponentformat = "power",
+                      title_text = "Biomass ratio"),
+         xaxis = list(#type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)"))
+
+# yield with medium fishing effort
+
+yield_medium <- getYield(sim_med)
+time_medium <- getTimes(sim_med)
+
+yield_medium_data <- data.frame(Time = time_medium, 
+                               Yield = yield_medium)
+
+plot_ly(yield_medium_data) |> 
+  filter(time >= 0) |>
+  add_lines(x = ~Time, y = ~Target.species) |> 
+  layout(yaxis = list(type = "log", title_text = "Yield (g/year)"),
+         xaxis = list(title_text = "Year"))
+
+
+## Yield graph with high fishing effort
+
+yield_heavy <- getYield(sim_heavy)
+time_heavy <- getTimes(sim_heavy)
+
+yield_heavy_data <- data.frame(Time = time_heavy, 
+                         Yield = yield_heavy)
+
+plot_ly(yield_heavy_data) |> 
+  filter(time >= 0) |>
+  add_lines(x = ~Time, y = ~Target.species) |> 
+  layout(yaxis = list(type = "log", title_text = "Yield (g/year)"),
+         xaxis = list(title_text = "Year"))
+
+
+
+## time dependent fishing effort
+
+t_total <- 50
+low_effort <- 1
+high_effort <- 10
+threshold_value <- 0.00015
+current_effort <- low_effort
+
+
+sim_combined <- project(params, t_max = 1, effort = current_effort)
+
+last_yield <- getYield(sim_combined)[idxFinalT(sim_combined), "Target species"]
+if (last_yield >= threshold_value) {
+  current_effort <- high_effort
+} else {
+  current_effort <- low_effort
+}
+
+for (t in 2:t_total) {
+  sim_combined <- project(sim_combined, t_max = 1, effort = current_effort, append = TRUE)
+  
+  last_yield <- getYield(sim_combined)[idxFinalT(sim_combined), "Target species"]
+  
+  if (last_yield >= threshold_value) {
+    current_effort <- high_effort
+  } else {
+    current_effort <- low_effort
+  }
+}
+
+
+# changing effort over time
+effort_df <- melt(getEffort(sim_combined))
+
+p <- ggplot(effort_df, aes(x = time, y = value, colour = gear)) +
+  geom_line() +
+  labs(title = "Fishing Effort Over Time", 
+       x = "Year", y = "Effort")
+
+plotly::ggplotly(p)
+
+
+# Yield with changing effort
+
+yield_fishing <- getYield(sim_combined)
+time_fishing <- getTimes(sim_combined)
+
+yield_fishing_data <- data.frame(Time = time_fishing, 
+                                Yield = yield_fishing)
+
+plot_ly(yield_fishing_data) |> 
+  filter(time >= 0) |>
+  add_lines(x = ~Time, y = ~Target.species) |> 
+  layout(yaxis = list(type = "log", title_text = "Yield (g/year)"),
+         xaxis = list(title_text = "Year"))
+
+
+
+gf_original <- melt(getEGrowth(params_single))
+gf_original$Model <- "Original"
+gf_starved <- melt(getEGrowth(params))
+gf_starved$Model <- "Less prey"
+gf <- rbind(gf_original, gf_starved)
+growth_rates_plot <- ggplot(gf, aes(x = w, y = value, linetype = Model)) +
+  geom_line() +
+  scale_x_log10("Weight [g]") +
+  ylab("Growth rate [g/year]")
+growth_rates_plot
+
+spectra_plot <- plotSpectra2(sim_double, name1 = "Original",
+                             sim_reduced, name2 = "Less prey",
+                             power = 2, )
+spectra_plot
