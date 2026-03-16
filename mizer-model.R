@@ -7,7 +7,8 @@ library(ggplot2)
 library(plotly)
 library(dplyr)
 library(reticulate)
-
+library(scales)
+library(processx)
 
 # Setting parameters ------------------------------------------------------
 
@@ -49,7 +50,7 @@ gear_params(params_double)
 
 # Simulate biomass density when initial biomass is doubled and initial resources
 # are reduced
-sim_double <- project(params_double, t_max = 50, effort = 1)
+sim_double <- project(params_double, t_max = 50, effort = 0.125)
 animateSpectra(sim_double, total = FALSE, power = 2, 
                ylim = c(1e-8, NA), wlim = c(1e-3, NA))
 
@@ -78,29 +79,54 @@ flux <- gr * N
 # Plot flux before local reductions
 initial_flux_data <- data.frame(Weight = w, 
                              Flux = flux)
-initial_flux_plot <- ggplot(initial_flux_data,
-                         aes(x = Weight, y = Flux)) +
-  geom_smooth() +
-  scale_x_log10() +
-  scale_y_log10() +
-  labs(
-    x = paste0("Weight (g)"),
-    y = paste0("Flux (g/year)"),
-    title = "Flux over increasing weight of fish") +
-  theme_classic()
-initial_flux_plot
 
-ggsave("figures/flux_plot_initial.png",
-       plot = initial_flux_plot,
-       device = "png",
-       width = 8,
-       height = 6,
-       units = "in",
-       dpi = 300)
+plot_ly(initial_flux_data) |> 
+  add_lines(x = ~Weight, y = ~Flux) |> 
+  layout(yaxis = list(type = "log", exponentformat = "power",
+                      title_text = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         xaxis = list(type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE), 
+         margin = list(b = 65, l = 50))
+
+# limited weight range
+
+w[89:101]
+
+initial_limited_flux <- data.frame(Weight = w[61:101], 
+                                Flux = flux[61:101])
+
+plot_ly(initial_limited_flux) |> 
+  add_lines(x = ~Weight, y = ~Flux) |> 
+  layout(yaxis = list(type = "log", exponentformat = "power",
+                      title_text = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         xaxis = list(type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         margin = list(b = 65, l = 50))
 
 
 
-plotSpectra(params_double, power = 2)
+#initial_flux_plot <- ggplot(initial_flux_data, aes(x = Weight, y = Flux)) +
+#  geom_line() +
+#  scale_x_log10() +
+#  scale_y_log10() +
+#  labs(
+#    x = paste0("Weight (g)"),
+#    y = paste0("Flux (gm<sup>-2</sup>year<sup>-1</sup>)")) +
+#  theme_test()
+
+#plotly::ggplotly(initial_flux_plot) 
+
+#ggsave("figures/flux_plot_initial.png",
+#       plot = initial_flux_plot,
+#       device = "png",
+#       width = 8,
+#       height = 6,
+#       units = "in",
+#       dpi = 300)
 
 
 
@@ -159,9 +185,13 @@ pred_kernel
 
 pred_kernel_reduced <- pred_kernel[, 89, , drop = FALSE]
 
-ggplot(melt(pred_kernel_reduced)) +
-  geom_line(aes(x = w_prey, y = value)) +
-  scale_x_log10(limits = c(1e-4, 1000))
+large_pred_kernel <- ggplot(melt(pred_kernel_reduced)) +
+                            geom_line(aes(x = w_prey, y = value)) +
+                            scale_x_log10("Weight of prey (g)", limits = c(1e-5, 1e03)) +
+                            scale_y_continuous("Proportion", limits = c(0,1)) +
+                            theme_bw()
+
+
 
 select(species_params(params_reduced), beta, sigma)
 
@@ -174,7 +204,9 @@ getPredKernel(params)[, 89, , drop = FALSE] %>%
   melt() %>% 
   ggplot() +
   geom_line(aes(x = w_prey, y = value)) +
-  scale_x_log10(limits = c(1e-4, 100))
+  scale_x_log10("Weight of prey (g)", limits = c(1e-5, 1e03)) +
+  scale_y_continuous("Proportion")+
+  theme_bw()
 
 
 ## reducing feeding level
@@ -185,7 +217,7 @@ getPredKernel(params)[, 89, , drop = FALSE] %>%
 
 
 # Calculate new flux
-sim_reduced <- project(params, t_max = 50, effort = 1)
+sim_reduced <- project(params, t_max = 50, effort = 0.75)
 
 N_reduced <- finalN(sim_reduced)["Target species", , drop = TRUE]
 w <- w(params)
@@ -197,148 +229,34 @@ flux_reduced <- grr * N_reduced
 
 reduced_flux_data <- data.frame(Weight = w, 
                              Flux = flux_reduced)
-#reduced_flux_data$species = "Target Species"
-
-# Plot flux on log-log axis
 
 plot_ly(reduced_flux_data) |> 
   add_lines(x = ~Weight, y = ~Flux) |> 
   layout(yaxis = list(type = "log", exponentformat = "power",
-                              title_text = "Flux (g/year)"),
+                      title_text = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
          xaxis = list(type = "log", exponentformat = "power", 
-                      title_text = "Weight (g)"))
-
-reduced_flux_log_plot <- ggplot(reduced_flux_data,
-                         aes(x = Weight, y = Flux)) +
-  geom_smooth() +
-  scale_y_log10() +
-  scale_x_log10() +
-  labs(
-    x = paste0("Weight (g)"),
-    y = paste0("Flux (g/year)")) +
-  theme_classic()
-
-reduced_flux_log_plot
-
-# Plot with log y-axis
-
-reduced_flux_plot <- ggplot(reduced_flux_data,
-                            aes(x = Weight, y = Flux)) +
-  geom_smooth() +
-  scale_y_log10() +
-  labs(
-    x = paste0("Weight (g)"),
-    y = paste0("Flux (g/year)")) +
-  theme_classic()
-reduced_flux_plot
-
-# Save plots
-
-ggsave("figures/flux_plot_log_reduced.png",
-       plot = reduced_flux_log_plot,
-       device = "png",
-       width = 8,
-       height = 6,
-       units = "in",
-       dpi = 300)
-
-ggsave("figures/flux_plot_reduced.png",
-       plot = reduced_flux_plot,
-       device = "png",
-       width = 8,
-       height = 6,
-       units = "in",
-       dpi = 300)
+                      title_text = "Weight (g)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         margin = list(b = 65, l = 50))
 
 
 ## Plot flux graph over a limited weight range
 # Flux between weight of maturity and maximum weight
 
-limited_flux_data <- data.frame(Weight = w[89:101], 
-                                Flux = flux_reduced[89:101])
+limited_flux_data <- data.frame(Weight = w[61:101], 
+                                Flux = flux_reduced[61:101])
 
 plot_ly(limited_flux_data) |> 
   add_lines(x = ~Weight, y = ~Flux) |> 
   layout(yaxis = list(type = "log", exponentformat = "power",
-                      title_text = "Flux (g/year)"),
+                      title_text = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
          xaxis = list(type = "log", exponentformat = "power", 
-                      title_text = "Weight (g)"))
+                      title_text = "Weight (g)",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         margin = list(b = 65, l = 50))
 
-# Plot on log-log axis
-
-limited_flux_log_plot <- ggplot(limited_flux_data,
-                                aes(x = Weight, y = Flux)) +
-  geom_smooth() +
-  scale_y_log10() +
-  scale_x_log10(limits = c(25, 100)) +
-  labs(
-    x = paste0("Weight (g)"),
-    y = paste0("Flux (g/year)")) +
-  theme_classic()
-limited_flux_log_plot
-
-
-# Plot on log y-axis
-
-limited_flux_plot <- ggplot(limited_flux_data,
-                                aes(x = Weight, y = Flux)) +
-  geom_smooth() +
-  scale_y_log10() +
-  scale_x_continuous(limits = c(25, 100)) +
-  labs(
-    x = paste0("Weight (g)"),
-    y = paste0("Flux (g/year)")) +
-  theme_classic()
-limited_flux_plot
-
-
-ggsave("figures/limited_flux_log_plot",
-       plot = limited_flux_log_plot,
-       device = "png",
-       width = 8,
-       height = 6,
-       units = "in",
-       dpi = 300)
-
-ggsave("figures/limited_flux_plot",
-       plot = limited_flux_plot,
-       device = "png",
-       width = 8,
-       height = 6,
-       units = "in",
-       dpi = 300)
-
-
-## Yield graph
-yield <- getYield(sim_reduced)
-time <- getTimes(sim_reduced)
-
-yield_data <- data.frame(Time = time, 
-                         Yield = yield)
-
-plot_ly(yield_data) |> 
-  add_lines(x = ~Time, y = ~Target.species) |> 
-  layout(yaxis = list(type = "log", title_text = "Yield (g/year)"),
-         xaxis = list(title_text = "Year"))
-
-yield_graph <- ggplot(yield_data, 
-                     aes(x = Time, y = Target.species)) + 
-  geom_line() +
-  #scale_y_log10() + 
-  #scale_x_log10() +
-  labs(x = paste0("Year"),
-       y = paste0("Yield (g/year)") ) +
-  theme_classic()
-  yield_graph
-
-
-ggsave("figures/yield_plot",
-         plot = yield_graph,
-         device = "png",
-         width = 8,
-         height = 6,
-         units = "in",
-         dpi = 300)
   
 
 
@@ -348,29 +266,14 @@ growth_data <- data.frame(growth = E_growth_reduced,
 
 plot_ly(growth_data) |> 
   add_lines(x = ~weight, y = ~growth) |> 
-  layout(yaxis = list(#type = "log", exponentformat = "power",
-                      title_text = "Growth Rate (g/year)"),
-         xaxis = list(#type = "log", exponentformat = "power", 
-                      title_text = "Weight (g)"))
+  layout(yaxis = list(title_text = "Growth Rate (g/year)", 
+                      range = c(0, 20),
+                      showline = TRUE, showgrid = FALSE, zeroline = FALSE, mirror = TRUE),
+         xaxis = list(type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE), 
+         margin = list(b = 65, l = 50))
 
-growth_plot <- ggplot(growth_data,
-       aes(x = weight,
-           y = growth)) +
-  geom_smooth() +
-  #scale_y_log10() +
-  #scale_x_log10() +
-  labs(x = paste0("Weight (g)"),
-       y = paste0("Growth Rate (g/year)")) +
-  theme_classic()
-growth_plot
-
-ggsave("figures/growth_rate_plot.png",
-       plot = growth_plot,
-       device = "png",
-       width = 8,
-       height = 6,
-       units = "in",
-       dpi = 300)
 
 
 ## plot growth rate for larger fish
@@ -381,39 +284,12 @@ limited_growth_data <- data.frame(growth = E_growth_reduced[89:101],
 
 plot_ly(limited_growth_data) |> 
   add_lines(x = ~weight, y = ~growth) |> 
-  layout(yaxis = list(#type = "log", exponentformat = "power",
-    title_text = "Growth Rate (g/year)"),
-    xaxis = list(#type = "log", exponentformat = "power", 
-      title_text = "Weight (g)"))
-
-
-limited_growth_plot <- ggplot(limited_growth_data,
-                      aes(x = weight,
-                          y = growth)) +
-  geom_smooth() +
-  #scale_x_log10() +
-  #scale_y_log10() +
-  labs(x = paste0("Weight (g)"),
-       y = paste0("Growth Rate (g/year)")) +
-  theme_classic()
-limited_growth_plot
-
-
-ggsave("figures/limited_growth_rate_plot.png",
-       plot = limited_growth_plot,
-       device = "png",
-       width = 8,
-       height = 6,
-       units = "in",
-       dpi = 300)
-
-
-## reproduction
-getRDD(params)
-
-
-plotSpectra(sim_reduced, power = 2, wlim = c(1e-8, NA), ylim = c(1e-8, NA),
-            time_range = 30)
+  layout(yaxis = list(title_text = "Growth Rate (g/year)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE, zeroline = FALSE),
+         xaxis = list(type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE), 
+         margin = list(b = 65, l = 50))
 
 
 # animation 
@@ -426,7 +302,8 @@ plot_ly(nf) %>%
   # show only part of plankton spectrum
   filter(w > 10^-5) %>% 
   # start at time 20
-  #filter(time >= 26) %>% 
+  #filter(time >= 50) %>% 
+  #filter(time <= 100) %>% 
   # calculate biomass density with respect to log size
   mutate(b = value * w^2) %>% 
   # Plot lines
@@ -447,19 +324,21 @@ plot_ly(nf) %>%
 
 # animation of flux
 species <- "Target species"
+time_flux <- getTimes(sim_reduced)
 
 flux_series <- lapply(seq_along(time), function(i) {
   n_at_t <- sim_reduced@n[i, species, ]
   data.frame(
     Time = time[i],
     Weight = w,
-    Flux = n_at_t * grr
-  )
+    Flux = n_at_t * grr)
 }) %>% bind_rows()
 
 flux_series$Species <- species
 
 plot_ly(flux_series) %>% 
+  filter(time >= 50) %>% 
+  #filter(time <= 100) %>%
   add_lines(x ~Weight, 
             y ~Flux, 
             color = ~Species, 
@@ -472,92 +351,73 @@ plot_ly(flux_series) %>%
                       range = c(-8, 2)))
 
 
-# flux with medium fishing effort
+## altered fishing effort
+# flux with lower fishing effort than MSY
 
-sim_med <- project(params, t_max = 50, effort = 5)
+sim_lower <- project(params, t_max = 50, effort = 0.1)
 
-N_med <- finalN(sim_med)["Target species", , drop = TRUE]
+N_lower <- finalN(sim_lower)["Target species", , drop = TRUE]
+flux_lower <- grr * N_lower
 
-flux_med <- grr * N_med
+lower_flux_data <- data.frame(Weight = w, 
+                                Flux = flux_lower)
 
-medium_flux_data <- data.frame(Weight = w, 
-                                Flux = flux_med)
-
-plot_ly(medium_flux_data) |> 
+plot_ly(lower_flux_data) |> 
   add_lines(x = ~Weight, y = ~Flux) |> 
   layout(yaxis = list(type = "log", exponentformat = "power",
-                      title_text = "Flux (g/year)"),
+                      title_text = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
          xaxis = list(type = "log", exponentformat = "power", 
-                      title_text = "Weight (g)"))
+                      title_text = "Weight (g)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE), 
+         margin = list(b = 65, l = 50))
 
 
 # flux with higher fishing effort
 
-sim_heavy <- project(params, t_max = 50, effort = 10)
+sim_higher <- project(params, t_max = 50, effort = 1.5)
 
-N_heavy <- finalN(sim_heavy)["Target species", , drop = TRUE]
-w <- w(params)
+N_higher <- finalN(sim_higher)["Target species", , drop = TRUE]
+flux_higher <- grr * N_higher
 
-E_growth_reduced <- getEGrowth(params)["Target species", , drop = TRUE]
-grr <- w * E_growth_reduced
-flux_heavy <- grr * N_heavy
-
-
-fishing_flux_data <- data.frame(Weight = w, 
-                                Flux = flux_heavy)
-#fishing_flux_data$species = "Target Species"
-
-plot_ly(fishing_flux_data) |> 
+higher_flux_data <- data.frame(Weight = w, 
+                                Flux = flux_higher)
+plot_ly(higher_flux_data) |> 
   add_lines(x = ~Weight, y = ~Flux) |> 
   layout(yaxis = list(type = "log", exponentformat = "power",
-                      title_text = "Flux (g/year)"),
+                      title_text = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
          xaxis = list(type = "log", exponentformat = "power", 
-                      title_text = "Weight (g)"))
+                      title_text = "Weight (g)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE), 
+         margin = list(b = 65, l = 50))
 
-
-fishing_flux_log_plot <- ggplot(fishing_flux_data,
-                                aes(x = Weight, y = Flux)) +
-  geom_smooth() +
-  scale_y_log10() +
-  scale_x_log10() +
-  labs(
-    x = paste0("Weight (g)"),
-    y = paste0("Flux (g/year)")) +
-  theme_classic()
-
-fishing_flux_log_plot
-reduced_flux_log_plot
-
-ggsave("figures/flux_plot_fishing.png",
-       plot = fishing_flux_log_plot,
-       device = "png",
-       width = 8,
-       height = 6,
-       units = "in",
-       dpi = 300)
 
 # compare plots on same axis
 
-reduced_flux_data$Effort = "Low fishing effort"
-medium_flux_data$Effort = "Medium fishing effort"
-fishing_flux_data$Effort = "High fishing effort"
+reduced_flux_data$Effort = "MSY"
+lower_flux_data$Effort = "Lower fishing effort"
+higher_flux_data$Effort = "Higher fishing effort"
 
 
-fishing_flux <- rbind(fishing_flux_data, medium_flux_data, reduced_flux_data)
+fishing_flux <- rbind(higher_flux_data, lower_flux_data, reduced_flux_data)
 
 plot_ly(fishing_flux) |> 
   add_lines(x = ~Weight, y = ~Flux, color = ~Effort) |> 
   layout(yaxis = list(type = "log", exponentformat = "power",
-                      title_text = "Flux (g/year)"),
+                      title_text = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
          xaxis = list(type = "log", exponentformat = "power", 
-                      title_text = "Weight (g)"))
+                      title_text = "Weight (g)", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE), 
+         margin = list(b = 65, l = 50))
 
 
 # biomass ratio between fishing effort
 
 biomass_reduced <- N_reduced * w
-biomass_medium <- N_med * w
-biomass_heavy <- N_heavy * w
+biomass_medium <- N_lower * w
+biomass_heavy <- N_higher * w
 
 # biomass ratio - low and medium
 
@@ -600,43 +460,72 @@ plot_ly(biomass_ratio_lh_data) |>
          xaxis = list(#type = "log", exponentformat = "power", 
                       title_text = "Weight (g)"))
 
-# yield with medium fishing effort
 
-yield_medium <- getYield(sim_med)
-time_medium <- getTimes(sim_med)
+# Yield graphs ------------------------------------------------------------
 
-yield_medium_data <- data.frame(Time = time_medium, 
-                               Yield = yield_medium)
+## Yield graph for MSY
+sim_MSY <- project(params, t_max = 150, effort = 0.75)
 
-plot_ly(yield_medium_data) |> 
-  filter(time >= 0) |>
+yield <- getYield(sim_MSY)
+time <- getTimes(sim_MSY)
+
+yield_data <- data.frame(Time = time, 
+                         Yield = yield)
+
+plot_ly(yield_data) |> 
+  filter(time >= 50) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
-  layout(yaxis = list(type = "log", title_text = "Yield (g/year)"),
-         xaxis = list(title_text = "Year"))
+  layout(yaxis = list(type = "log", exponentformat = 'power', 
+                      title_text = "Yield (g/year)",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         xaxis = list(title_text = "Year", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         margin = list(b = 65, l = 50))
+
+
+# yield with medium fishing effort
+sim_low_yield <- project(params, t_max = 150, effort = 0.1)
+yield_lower <- getYield(sim_low_yield)
+
+yield_lower_data <- data.frame(Time = time, 
+                               Yield = yield_lower)
+
+plot_ly(yield_lower_data) |> 
+  filter(time >= 50) |>
+  add_lines(x = ~Time, y = ~Target.species) |> 
+  layout(yaxis = list(type = "log", exponentformat = 'power', 
+                      title_text = "Yield (g/year)",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         xaxis = list(title_text = "Year", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         margin = list(b = 65, l = 50))
 
 
 ## Yield graph with high fishing effort
+sim_high_yield <- project(params, t_max = 150, effort = 1.5)
+yield_heavy <- getYield(sim_high_yield)
 
-yield_heavy <- getYield(sim_heavy)
-time_heavy <- getTimes(sim_heavy)
-
-yield_heavy_data <- data.frame(Time = time_heavy, 
+yield_heavy_data <- data.frame(Time = time, 
                          Yield = yield_heavy)
 
 plot_ly(yield_heavy_data) |> 
-  filter(time >= 0) |>
+  filter(time >= 50) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
-  layout(yaxis = list(type = "log", title_text = "Yield (g/year)"),
-         xaxis = list(title_text = "Year"))
+  layout(yaxis = list(type = "log", exponentformat = 'power', 
+                      title_text = "Yield (g/year)",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         xaxis = list(title_text = "Year", 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         margin = list(b = 65, l = 50))
 
 
 
 ## time dependent fishing effort
 
-t_total <- 50
-low_effort <- 1
-high_effort <- 10
-threshold_value <- 0.00015
+t_total <- 500
+low_effort <- 0.75
+high_effort <- 1.5
+threshold_value <- 0.000025
 current_effort <- low_effort
 
 
@@ -665,12 +554,13 @@ for (t in 2:t_total) {
 # changing effort over time
 effort_df <- melt(getEffort(sim_combined))
 
-p <- ggplot(effort_df, aes(x = time, y = value, colour = gear)) +
-  geom_line() +
-  labs(title = "Fishing Effort Over Time", 
-       x = "Year", y = "Effort")
-
-plotly::ggplotly(p)
+plot_ly(effort_df) |> 
+  add_lines(x = ~time, y = ~value) |> 
+  layout(yaxis = list(title_text = "Effort",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         xaxis = list(title_text = "Time (year)", range = c(300, 500),
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         margin = list(b = 65, l = 50))
 
 
 # Yield with changing effort
@@ -682,25 +572,68 @@ yield_fishing_data <- data.frame(Time = time_fishing,
                                 Yield = yield_fishing)
 
 plot_ly(yield_fishing_data) |> 
-  filter(time >= 0) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
-  layout(yaxis = list(type = "log", title_text = "Yield (g/year)"),
-         xaxis = list(title_text = "Year"))
+  layout(yaxis = list(type = "log", exponentformat = 'power', 
+                      title_text = "Yield (g/year)",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         xaxis = list(title_text = "Year", range = c(300, 500),
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         margin = list(b = 65, l = 50))
 
 
 
-gf_original <- melt(getEGrowth(params_single))
+
+
+
+gf_original <- melt(getEGrowth(params_initial))
 gf_original$Model <- "Original"
 gf_starved <- melt(getEGrowth(params))
 gf_starved$Model <- "Less prey"
-gf <- rbind(gf_original, gf_starved)
-growth_rates_plot <- ggplot(gf, aes(x = w, y = value, linetype = Model)) +
-  geom_line() +
-  scale_x_log10("Weight [g]") +
-  ylab("Growth rate [g/year]")
-growth_rates_plot
+gf_total <- rbind(gf_original, gf_starved)
 
-spectra_plot <- plotSpectra2(sim_double, name1 = "Original",
-                             sim_reduced, name2 = "Less prey",
-                             power = 2, )
-spectra_plot
+
+plot_ly(gf_total) |> 
+  add_lines(x = ~w, y = ~value, color = ~Model) |> 
+  layout(yaxis = list(title_text = "Growth rate (g/year)",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE, zeroline = FALSE,
+                      range = c(0,40)),
+         xaxis = list(type = "log", exponentformat = "power", 
+                      title_text = "Weight (g)",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+         margin = list(b = 65, l = 50))
+
+
+
+
+plotSpectra(sim_reduced, power = 2, wlim = c(1e-8, NA), ylim = c(1e-8, NA),
+            time_range = 50)+
+  theme_test()
+
+
+
+plotYieldVsF(
+  params,
+  'Target species',
+  F_range,
+  F_max = 1,
+  F_min = 0,
+  no_steps = 25,
+  distance_func = distanceSSLogN,
+  tol = 0.0001,
+  t_max = 250) +
+  theme_test()
+
+getSelectivity(params)
+
+
+plotYieldVsF(
+  params_initial,
+  'Target species',
+  F_range,
+  F_max = 1,
+  F_min = 0,
+  no_steps = 25,
+  distance_func = distanceSSLogN,
+  tol = 0.001,
+  t_max = 250) +
+  theme_test()
