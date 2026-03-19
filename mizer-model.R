@@ -77,6 +77,8 @@ plot_ly(initial_flux_data) |>
                       showline = TRUE, showgrid = FALSE, mirror = TRUE), 
          margin = list(b = 65, l = 50))
 
+
+
 # limited weight range
 
 initial_limited_flux <- data.frame(Weight = w[61:101], 
@@ -383,23 +385,23 @@ plot_ly(fishing_flux) |>
          xaxis = list(type = "log", exponentformat = "power", 
                       title_text = "Weight (g)", 
                       showline = TRUE, showgrid = FALSE, mirror = TRUE), 
-         margin = list(b = 65, l = 50))
+         margin = list(b = 65, l = 75))
 
 
 
 # Yield graphs ------------------------------------------------------------
 
 ## Yield graph for MSY
-sim_MSY <- project(params, t_max = 150, effort = 0.75)
+sim_MSY <- project(params, t_max = 500, effort = 0.75)
 
 yield <- getYield(sim_MSY)
-time_150 <- getTimes(sim_MSY)
+times <- getTimes(sim_MSY)
 
-yield_data <- data.frame(Time = time_150, 
+yield_data <- data.frame(Time = times, 
                          Yield = yield)
 
 plot_ly(yield_data) |> 
-  filter(time_150 >= 50) |>
+  filter(times >= 300) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
   layout(yaxis = list(type = "log", exponentformat = 'power', 
                       title_text = "Yield (g/year)",
@@ -410,14 +412,14 @@ plot_ly(yield_data) |>
 
 
 # yield with lower fishing effort
-sim_low_yield <- project(params, t_max = 150, effort = 0.1)
+sim_low_yield <- project(params, t_max = 500, effort = 0.1)
 yield_lower <- getYield(sim_low_yield)
 
-yield_lower_data <- data.frame(Time = time_150, 
+yield_lower_data <- data.frame(Time = times, 
                                Yield = yield_lower)
 
 plot_ly(yield_lower_data) |> 
-  filter(time_150 >= 50) |>
+  filter(times >= 300) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
   layout(yaxis = list(type = "log", exponentformat = 'power', 
                       title_text = "Yield (g/year)",
@@ -428,14 +430,14 @@ plot_ly(yield_lower_data) |>
 
 
 ## Yield graph with high fishing effort
-sim_high_yield <- project(params, t_max = 150, effort = 1.5)
+sim_high_yield <- project(params, t_max = 500, effort = 1.5)
 yield_heavy <- getYield(sim_high_yield)
 
-yield_heavy_data <- data.frame(Time = time_150, 
+yield_heavy_data <- data.frame(Time = times, 
                          Yield = yield_heavy)
 
 plot_ly(yield_heavy_data) |> 
-  filter(time_150 >= 50) |>
+  filter(times >= 300) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
   layout(yaxis = list(type = "log", exponentformat = 'power', 
                       title_text = "Yield (g/year)",
@@ -478,13 +480,12 @@ for (t in 2:t_total) {
 
 # Yield with changing effort
 yield_fishing <- getYield(sim_combined)
-time_500<- getTimes(sim_combined)
 
-yield_fishing_data <- data.frame(Time = time_500, 
+yield_fishing_data <- data.frame(Time = times, 
                                  Yield = yield_fishing)
 
 plot_ly(yield_fishing_data) |> 
-  filter(time_500 >= 300) |>
+  filter(times >= 300) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
   layout(yaxis = list(type = "log", exponentformat = 'power', 
                       title_text = "Yield (g/year)",
@@ -497,7 +498,7 @@ plot_ly(yield_fishing_data) |>
 effort_df <- melt(getEffort(sim_combined))
 
 plot_ly(effort_df) |> 
-  filter(time_500 >= 300) |> 
+  filter(times >= 300) |> 
   add_lines(x = ~time, y = ~value) |> 
   layout(yaxis = list(title_text = "Effort",
                       showline = TRUE, showgrid = FALSE, mirror = TRUE),
