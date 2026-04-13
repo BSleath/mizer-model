@@ -55,7 +55,7 @@ plotYieldVsF(
   theme_test()
 
 # Plot flux before reductions in resource dynamics
-sim_initial <- project(params_initial, t_max = 34, t_save = 0.1, effort = 0.125)
+sim_initial <- project(params_initial, t_max = 50, t_save = 0.1, effort = 0.125)
 
 N <- finalN(sim_initial)["Target species", , drop = TRUE]
 w <- w(params_initial)
@@ -189,7 +189,7 @@ plotYieldVsF(
 
 
 # Calculate new flux
-sim_reduced <- project(params, t_max = 34, t_save = 0.1, effort = 4.6)
+sim_reduced <- project(params, t_max = 50, t_save = 0.1, effort = 4.6)
 
 N_reduced <- finalN(sim_reduced)["Target species", , drop = TRUE]
 w <- w(params)
@@ -302,14 +302,14 @@ plot_ly(gf_total) |>
 
 # Biomass density spectra
 plotSpectra(sim_reduced, power = 2, wlim = c(1e-8, NA), ylim = c(1e-8, NA),
-            time_range = 36)+
+            time_range = 50)+
   theme_test()
 
 
 # Comparative biomass density spectra
 plotSpectra2(sim_initial, name1 = "Original",
              sim_reduced, name2 = "Less prey",
-             power = 2, time_range = 36) + 
+             power = 2, time_range = 50) + 
   theme_test()
 
 
@@ -369,7 +369,7 @@ plot_ly(flux_series) |>
 # Altered fishing effort --------------------------------------------------
 
 ## flux with lower fishing effort than MSY
-sim_lower <- project(params, t_max = 34, t_save = 0.1, effort = 0.5)
+sim_lower <- project(params, t_max = 50, t_save = 0.1, effort = 0.5)
 
 N_lower <- finalN(sim_lower)["Target species", , drop = TRUE]
 flux_lower <- grr * N_lower
@@ -389,7 +389,7 @@ plot_ly(lower_flux_data) |>
 
 
 ## flux with higher fishing effort
-sim_higher <- project(params, t_max = 34, t_save = 0.1, effort = 10)
+sim_higher <- project(params, t_max = 50, t_save = 0.1, effort = 10)
 
 N_higher <- finalN(sim_higher)["Target species", , drop = TRUE]
 flux_higher <- grr * N_higher
