@@ -52,25 +52,8 @@ gear_params(params_initial)
 
 ## Initial model
 
-### Maximum sustainable yield
-We calculate the maximum sustainable yield of the initial system in order to determine the fishing effort of the simulation
-
-```{r message=FALSE, warning=FALSE}
-plotYieldVsF(
-  params_single,
-  'Target species',
-  F_range,
-  F_max = 1,
-  F_min = 0,
-  no_steps = 25,
-  distance_func = distanceSSLogN,
-  tol = 0.001,
-  t_max = 250) +
-  theme_test()
-```
-
 ### Calculate flux
-Calculate the flux, the movement biomass between size classes, of the original system
+Calculate the flux, the movement biomass between size classes, of the original system. The flux shown here is at t = 50, in the report the flux is shown over a 10 year period between t = 34 and t = 44.  
 
 ```{r message=FALSE, warning=FALSE}
 sim_initial <- project(params_initial, t_max = 50, effort = 0.125)
@@ -196,13 +179,11 @@ getPredKernel(params)[, 89, , drop = FALSE] %>%
   theme_bw()
 ```
 
-### Maximum sustainable yield
-We once again calculate the maximum sustainable yield of the system to determine the fishing effort of the simulation
-
 ### Calculate flux of system
+Calculate the flux of the system with modified resource dynamics. Once again, the flux shown here is at t = 50, in the report the flux is shown over a 10 year period between t = 34 and t = 44.
 
 ```{r message=FALSE, warning=FALSE}
-sim_reduced <- project(params, t_max = 50, effort = 0.75)
+sim_reduced <- project(params, t_max = 50, t_save = 0.1, effort = 4.6)
 
 N_reduced <- finalN(sim_reduced)["Target species", , drop = TRUE]
 w <- w(params)
@@ -242,6 +223,9 @@ plot_ly(limited_flux_data) |>
                       showline = TRUE, showgrid = FALSE, mirror = TRUE),
          margin = list(b = 65, l = 50))
 ```
+
+## Comparative flux
+Plot the flux of the two models on the same axis for comparison. The flux shown here is at t = 50, in the report the flux is shown over a 10 year period between t = 34 and t = 44.
 
 ## Growth rate
 
@@ -284,11 +268,9 @@ plot_ly(gf_total) |>
          margin = list(b = 65, l = 65))
 ```
 
-
-
 ## Biomass density spectra
 ### Reduced resource system
-Plot the spectra to see the biomass density across weight classes of the system
+Plot the spectra to see the biomass density across weight classes of the system. The biomass density is plotted at t = 50 here in line with the flux graphs, in the report it is plotted at t = 36 where the 'traffic jam' is most prevalent.
 
 ```{r message=FALSE, warning=FALSE}
 plotSpectra(sim_reduced, power = 2, wlim = c(1e-8, NA), ylim = c(1e-8, NA),
@@ -301,12 +283,13 @@ plotSpectra(sim_reduced, power = 2, wlim = c(1e-8, NA), ylim = c(1e-8, NA),
 ```{r message=FALSE, warning=FALSE}
 plotSpectra2(sim_initial, name1 = "Original",
              sim_reduced, name2 = "Less prey",
-             power = 2) + theme_test()
+             power = 2, time_range = 50) + 
+  theme_test()
 ```
 
 ## Animations
 
-We create animations to look at modelled changes over time
+We create animations to look at modelled changes over time for the modified model.
 
 ### Biomass abundance
 ```{r message=FALSE, warning=FALSE}
@@ -316,7 +299,7 @@ n_ppf$sp <- "Resource"
 nf <- rbind(nf, n_ppf)
 
 plot_ly(nf) |> 
-  filter(w > 10^-5) |>  
+  filter(w > 10^-5) |> 
   mutate(b = value * w^2) |> 
   add_lines(
     x = ~w, y = ~b,
@@ -359,12 +342,12 @@ plot_ly(flux_series) |>
 ```
 
 ## Altering fishing effort
-All previous simulations have been run using maximum sustainable yield. We now alter the fishing effort to see the impact on modelled functions. 
+All previous simulations have been run using maximum sustainable yield, or an approximation. We now alter the fishing effort to see the impact on modelled functions. 
 
 ### Flux with lower fishing effort
-Effort was changed to 0.1.
+Effort was changed to 0.5.
 ```{r message=FALSE, warning=FALSE}
-sim_lower <- project(params, t_max = 50, effort = 0.1)
+sim_lower <- project(params, t_max = 50, t_save = 0.1, effort = 0.5)
 
 N_lower <- finalN(sim_lower)["Target species", , drop = TRUE]
 flux_lower <- grr * N_lower
@@ -384,10 +367,10 @@ plot_ly(lower_flux_data) |>
 ```
 
 ### Flux with higher fishing effort
-Effort was changed to 1.5, which is double MSY.
+Effort was changed to 10.
 
 ```{r message=FALSE, warning=FALSE}
-sim_higher <- project(params, t_max = 50, effort = 1.5)
+sim_higher <- project(params, t_max = 50, t_save = 0.1, effort = 10)
 
 N_higher <- finalN(sim_higher)["Target species", , drop = TRUE]
 flux_higher <- grr * N_higher
@@ -406,8 +389,10 @@ plot_ly(higher_flux_data) |>
 ```
 
 ## Compare flux between fishing efforts
+Once again, this comparison is shown at t = 50, where in the report the flux comparison is plotted over a 10 year period between t = 34 and t = 44.
 
 ```{r message=FALSE, warning=FALSE}
+reduced_flux_data$Sim <- NULL
 reduced_flux_data$Effort = "MSY"
 lower_flux_data$Effort = "Lower fishing effort"
 higher_flux_data$Effort = "Higher fishing effort"
@@ -416,37 +401,38 @@ higher_flux_data$Effort = "Higher fishing effort"
 fishing_flux <- rbind(higher_flux_data, lower_flux_data, reduced_flux_data)
 
 plot_ly(fishing_flux) |> 
-  add_lines(x = ~Weight, y = ~Flux, color = ~Effort) |> 
+  add_lines(x = ~Weight, y = ~Flux, color = ~Effort, linetype = ~Effort) |> 
   layout(yaxis = list(type = "log", exponentformat = "power",
                       title_text = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", 
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE, range = c(-12,-2)),
          xaxis = list(type = "log", exponentformat = "power", 
                       title_text = "Weight (g)", 
                       showline = TRUE, showgrid = FALSE, mirror = TRUE), 
-         margin = list(b = 65, l = 50))
+         margin = list(b = 65, l = 75))
 ```
 
 ## Yield 
 
 ### Maximum sustainable yield
-We plot the yield with MSY.
+We plot the yield at our approximated MSY.
 
 ```{r message=FALSE, warning=FALSE}
-sim_MSY <- project(params, t_max = 150, effort = 0.75)
+sim_medium <- project(params, t_max = 100, t_save = 0.1, effort = 4.6)
 
-yield <- getYield(sim_MSY)
-time_150 <- getTimes(sim_MSY)
+yield <- getYield(sim_medium)
+times <- getTimes(sim_medium)
 
-yield_data <- data.frame(Time = time_150, 
+yield_data <- data.frame(Time = times, 
                          Yield = yield)
 
 plot_ly(yield_data) |> 
-  filter(time_150 >= 50) |>
+  filter(times >= 50) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
   layout(yaxis = list(type = "log", exponentformat = 'power', 
-                      title_text = "Yield (g/year)",
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
-         xaxis = list(title_text = "Year", 
+                      title = "Yield (g/year)",
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE,
+                        range = c(-7, -2)),
+         xaxis = list(title = "Year", 
                       showline = TRUE, showgrid = FALSE, mirror = TRUE),
          margin = list(b = 65, l = 70))
 ```
@@ -456,18 +442,19 @@ plot_ly(yield_data) |>
 We plot the yield with lower fishing effort.
 
 ```{r message=FALSE, warning=FALSE}
-sim_low_yield <- project(params, t_max = 150, effort = 0.1)
+sim_low_yield <- project(params, t_max = 100, t_save = 0.1, effort = 0.5)
 yield_lower <- getYield(sim_low_yield)
 
-yield_lower_data <- data.frame(Time = time_150, 
+yield_lower_data <- data.frame(Time = times, 
                                Yield = yield_lower)
 
 plot_ly(yield_lower_data) |> 
-  filter(time_150 >= 50) |>
+  filter(times >= 50) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
   layout(yaxis = list(type = "log", exponentformat = 'power', 
                       title_text = "Yield (g/year)",
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE,
+                      range = c(-7, -2)),
          xaxis = list(title_text = "Year", 
                       showline = TRUE, showgrid = FALSE, mirror = TRUE),
          margin = list(b = 65, l = 70))
@@ -477,68 +464,70 @@ plot_ly(yield_lower_data) |>
 We plot the yield with higher fishing effort.
 
 ```{r message=FALSE, warning=FALSE}
-sim_high_yield <- project(params, t_max = 150, effort = 1.5)
+sim_high_yield <- project(params, t_max = 100, t_save = 0.1,  effort = 10)
 yield_heavy <- getYield(sim_high_yield)
 
-yield_heavy_data <- data.frame(Time = time_150, 
+yield_heavy_data <- data.frame(Time = times, 
                          Yield = yield_heavy)
 
 plot_ly(yield_heavy_data) |> 
-  filter(time_150 >= 50) |>
+  filter(times >= 50) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
   layout(yaxis = list(type = "log", exponentformat = 'power', 
                       title_text = "Yield (g/year)",
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE,
+                      range = c(-7, -2)),
          xaxis = list(title_text = "Year", 
                       showline = TRUE, showgrid = FALSE, mirror = TRUE),
          margin = list(b = 65, l = 70))
 ```
 
 ### Time dependent fishing effort
-We experimented with changing the fishing effort in accordance to the yield. When the peaks of yield was reached, based on the MSY graph, the effort increases to the higher fishing effort. Otherwise the effort remained at a level to produce MSY.
+We experimented with changing the fishing effort in accordance to the yield. When the peaks of yield was reached, based on the MSY graph, the effort was reduced to the lower fishing effort. Otherwise the effort remained at a level to produce MSY.
 
 ```{r message=FALSE, warning=FALSE}
-t_total <- 500
-low_effort <- 0.75
-high_effort <- 1.5
-threshold_value <- 0.000025
-current_effort <- low_effort
+t_total <- 200
+med_effort <- 4.6
+low_effort <- 0.5
+threshold_value <- 0.00022
+current_effort <- med_effort
 
 
-sim_combined <- project(params, t_max = 1, effort = current_effort)
+sim_combined <- project(params, t_max = 1, t_save = 0.1, effort = current_effort)
 
 last_yield <- getYield(sim_combined)[idxFinalT(sim_combined), "Target species"]
 if (last_yield >= threshold_value) {
-  current_effort <- high_effort
-} else {
   current_effort <- low_effort
+} else {
+  current_effort <- med_effort
 }
 
 for (t in 2:t_total) {
-  sim_combined <- project(sim_combined, t_max = 1, effort = current_effort, append = TRUE)
+  sim_combined <- project(sim_combined, t_max = 1, t_save = 0.1, effort = current_effort, append = TRUE)
   
   last_yield <- getYield(sim_combined)[idxFinalT(sim_combined), "Target species"]
   
   if (last_yield >= threshold_value) {
-    current_effort <- high_effort
-  } else {
     current_effort <- low_effort
+  } else {
+    current_effort <- med_effort
   }
 }
 
-# Yield with changing effort
 yield_fishing <- getYield(sim_combined)
-time_500<- getTimes(sim_combined)
 
-yield_fishing_data <- data.frame(Time = time_500, 
+time = getTimes(sim_combined)
+
+yield_fishing_data <- data.frame(Time = time, 
                                  Yield = yield_fishing)
 
 plot_ly(yield_fishing_data) |> 
-  filter(time_500 >= 300) |>
+  filter(time >= 150) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
   layout(yaxis = list(type = "log", exponentformat = 'power', 
                       title_text = "Yield (g/year)",
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE,
+                      range = c(-7, -2)),
          xaxis = list(title_text = "Year",
                       showline = TRUE, showgrid = FALSE, mirror = TRUE),
          margin = list(b = 65, l = 70))
@@ -550,11 +539,11 @@ plot_ly(yield_fishing_data) |>
 effort_df <- melt(getEffort(sim_combined))
 
 plot_ly(effort_df) |> 
-  filter(time_500 >= 300) |> 
+  filter(time >= 100) |> 
   add_lines(x = ~time, y = ~value) |> 
   layout(yaxis = list(title_text = "Effort",
                       showline = TRUE, showgrid = FALSE, mirror = TRUE),
-         xaxis = list(title_text = "Time (year)", range = c(300, 500),
+         xaxis = list(title_text = "Time (year)", range = c(100, 200),
                       showline = TRUE, showgrid = FALSE, mirror = TRUE),
          margin = list(b = 65, l = 70))
 ```
