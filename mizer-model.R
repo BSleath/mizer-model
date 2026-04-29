@@ -52,10 +52,12 @@ plotYieldVsF(
   distance_func = distanceSSLogN,
   tol = 0.001,
   t_max = 250) +
-  theme_test()
+  theme_test() +
+  theme(axis.title = element_text(size = 15),
+        axis.text = element_text(size = 10))
 
 # Plot flux before reductions in resource dynamics
-sim_initial <- project(params_initial, t_max = 50, t_save = 0.1, effort = 0.125)
+sim_initial <- project(params_initial, t_max = 44, t_save = 0.1, effort = 0.125)
 
 N <- finalN(sim_initial)["Target species", , drop = TRUE]
 w <- w(params_initial)
@@ -75,7 +77,9 @@ plot_ly(initial_flux_data) |>
          xaxis = list(type = "log", exponentformat = "power", 
                       title_text = "Weight (g)", 
                       showline = TRUE, showgrid = FALSE, mirror = TRUE), 
-         margin = list(b = 65, l = 50))
+         margin = list(b = 80, l = 80)) |> 
+  layout( xaxis = list(titlefont = list(size = 20), tickfont = list(size = 15)),
+          yaxis = list(titlefont = list(size = 20), tickfont = list(size = 15)))
 
 
 
@@ -150,10 +154,13 @@ pred_kernel <- getPredKernel(params_reduced)
 pred_kernel_reduced <- pred_kernel[, 89, , drop = FALSE]
 
 ggplot(melt(pred_kernel_reduced)) +
-                            geom_line(aes(x = w_prey, y = value)) +
-                            scale_x_log10("Weight of prey (g)", limits = c(1e-5, 1e03)) +
-                            scale_y_continuous("Proportion", limits = c(0,1)) +
-                            theme_bw()
+        geom_line(aes(x = w_prey, y = value)) +
+        scale_x_log10("Weight of prey (g)", limits = c(1e-5, 1e02)) +
+        scale_y_continuous("Proportion", limits = c(0,1)) +
+        theme_bw() +
+        theme(axis.title = element_text(size = 15),
+        axis.text = element_text(size = 10))
+                          
 
 
 select(species_params(params_reduced), beta, sigma)
@@ -167,9 +174,11 @@ getPredKernel(params)[, 89, , drop = FALSE] %>%
   melt() %>% 
   ggplot() +
   geom_line(aes(x = w_prey, y = value)) +
-  scale_x_log10("Weight of prey (g)", limits = c(1e-5, 1e03)) +
+  scale_x_log10("Weight of prey (g)", limits = c(1e-5, 1e02)) +
   scale_y_continuous("Proportion")+
-  theme_bw()
+  theme_bw() +
+  theme(axis.title = element_text(size = 15),
+        axis.text = element_text(size = 10))
 
 
 ## Calculate MSY after changed parameters
@@ -184,7 +193,9 @@ plotYieldVsF(
   distance_func = distanceSSLogN,
   tol = 0.0001,
   t_max = 250) +
-  theme_test()
+  theme_test() +
+  theme(axis.title = element_text(size = 15),
+        axis.text = element_text(size = 10))
 
 
 
@@ -210,7 +221,9 @@ plot_ly(reduced_flux_data) |>
          xaxis = list(type = "log", exponentformat = "power", 
                       title_text = "Weight (g)", 
                       showline = TRUE, showgrid = FALSE, mirror = TRUE),
-         margin = list(b = 65, l = 50))
+         margin = list(b = 80, l = 80)) |> 
+  layout( xaxis = list(titlefont = list(size = 26), tickfont = list(size = 15)),
+          yaxis = list(titlefont = list(size = 26), tickfont = list(size = 15)))
 
 
 ## Plot flux graph over a limited weight range
@@ -237,13 +250,13 @@ models_flux <- rbind(reduced_flux_data, initial_flux_data)
 
 plot_ly(models_flux) |> 
   add_lines(x = ~Weight, y = ~Flux, color = ~Sim, linetype = ~Sim) |> 
-  layout(yaxis = list(type = "log", exponentformat = "power",
-                      title_text = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", 
+  layout(margin = list(l = 100, r = 20, b = 100, t = 10),
+         yaxis = list(type = "log", exponentformat = "power", 
                       showline = TRUE, showgrid = FALSE, mirror = TRUE, range = c(-12,-2)),
          xaxis = list(type = "log", exponentformat = "power", 
-                      title_text = "Weight (g)", 
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE), 
-         margin = list(b = 65, l = 75)) |> 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE)) |> 
+  layout(xaxis = list(title = "Weight (g)", titlefont = list(size = 25), tickfont = list(size = 15)),
+          yaxis = list(title = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", titlefont = list(size = 25), tickfont = list(size = 15))) |> 
   hide_legend()
 
 
@@ -261,7 +274,9 @@ plot_ly(compare_limited) |>
     xaxis = list(type = "log", exponentformat = "power", 
                  title_text = "Weight (g)", 
                  showline = TRUE, showgrid = FALSE, mirror = TRUE), 
-    margin = list(b = 65, l = 75))
+    margin = list(b = 80, l = 80)) |> 
+  layout( xaxis = list(titlefont = list(size = 20), tickfont = list(size = 15)),
+          yaxis = list(titlefont = list(size = 20), tickfont = list(size = 15)))
 
 
 ## growth rate plot
@@ -271,13 +286,13 @@ growth_data <- data.frame(growth = E_growth_reduced,
 
 plot_ly(growth_data) |> 
   add_lines(x = ~weight, y = ~growth, ) |> 
-  layout(yaxis = list(title_text = "Growth Rate (g/year)", 
-                      range = c(0, 20),
+  layout(yaxis = list(range = c(0, 20),
                       showline = TRUE, showgrid = FALSE, zeroline = FALSE, mirror = TRUE),
-         xaxis = list(type = "log", exponentformat = "power", 
-                      title_text = "Weight (g)", 
+         xaxis = list(type = "log", exponentformat = "power",
                       showline = TRUE, showgrid = FALSE, mirror = TRUE), 
-         margin = list(b = 65, l = 65))
+         margin = list(b = 80, l = 80)) |> 
+  layout(xaxis = list(title = "Growth Rate (g/year)", titlefont = list(size = 20), tickfont = list(size = 15)),
+         yaxis = list(title = "Weight (g)", titlefont = list(size = 20), tickfont = list(size = 15)))
 
 
 ## Comparative growth rate
@@ -290,27 +305,34 @@ gf_total <- rbind(gf_original, gf_starved)
 
 
 plot_ly(gf_total) |> 
-  add_lines(x = ~w, y = ~value, color = ~Model, linetype = ~Model) |> 
-  layout(yaxis = list(title_text = "Growth rate (g/year)",
+  add_lines(x = ~w, y = ~value, color = ~Model, linetype = ~Model) |>
+  layout(margin = list(l = 100, r = 50, b = 100, t = 10),
+         yaxis = list(title_text = "Growth rate (g/year)",
                       showline = TRUE, showgrid = FALSE, mirror = TRUE, zeroline = FALSE,
                       range = c(0,40)),
          xaxis = list(type = "log", exponentformat = "power", 
                       title_text = "Weight (g)",
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
-         margin = list(b = 65, l = 65))
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE)) |>
+layout(xaxis = list(title = "Growth Rate (g/year)", titlefont = list(size = 24), tickfont = list(size = 15)),
+       yaxis = list(title = "Weight (g)", titlefont = list(size = 24), tickfont = list(size = 15)))
+
 
 
 # Biomass density spectra
 plotSpectra(sim_reduced, power = 2, wlim = c(1e-8, NA), ylim = c(1e-8, NA),
-            time_range = 50)+
+            time_range = 36)+
   theme_test()
 
 
 # Comparative biomass density spectra
 plotSpectra2(sim_initial, name1 = "Original",
              sim_reduced, name2 = "Less prey",
-             power = 2, time_range = 50) + 
-  theme_test()
+             power = 2, time_range = 36) + 
+  theme_test() +
+  theme(axis.title = element_text(size = 15),
+        axis.text = element_text(size = 10))
+
+
 
 
 # Animations --------------------------------------------------------------
@@ -385,7 +407,10 @@ plot_ly(lower_flux_data) |>
          xaxis = list(type = "log", exponentformat = "power", 
                       title_text = "Weight (g)", 
                       showline = TRUE, showgrid = FALSE, mirror = TRUE), 
-         margin = list(b = 65, l = 50))
+         margin = list(b = 80, l = 80)) |> 
+  layout(xaxis = list(title = "Weight (g)", titlefont = list(size = 20), tickfont = list(size = 15)),
+         yaxis = list(title = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", titlefont = list(size = 20), tickfont = list(size = 15))) |> 
+  hide_legend()
 
 
 ## flux with higher fishing effort
@@ -404,7 +429,10 @@ plot_ly(higher_flux_data) |>
          xaxis = list(type = "log", exponentformat = "power", 
                       title_text = "Weight (g)", 
                       showline = TRUE, showgrid = FALSE, mirror = TRUE), 
-         margin = list(b = 65, l = 75))
+         margin = list(b = 80, l = 80)) |> 
+  layout(xaxis = list(title = "Weight (g)", titlefont = list(size = 20), tickfont = list(size = 15)),
+         yaxis = list(title = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", titlefont = list(size = 20), tickfont = list(size = 15))) |> 
+  hide_legend()
 
 
 ## compare plots on same axis
@@ -418,19 +446,18 @@ fishing_flux <- rbind(higher_flux_data, lower_flux_data, reduced_flux_data)
 
 plot_ly(fishing_flux) |> 
   add_lines(x = ~Weight, y = ~Flux, color = ~Effort, linetype = ~Effort) |> 
-  layout(yaxis = list(type = "log", exponentformat = "power",
-                      title_text = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", 
+  layout(margin = list(l = 100, r = 20, b = 100, t = 10),
+         yaxis = list(type = "log", exponentformat = "power", 
                       showline = TRUE, showgrid = FALSE, mirror = TRUE, range = c(-12,-2)),
          xaxis = list(type = "log", exponentformat = "power", 
-                      title_text = "Weight (g)", 
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE), 
-         margin = list(b = 65, l = 75)) |> 
+                      showline = TRUE, showgrid = FALSE, mirror = TRUE)) |> 
+  layout(xaxis = list(title = "Weight (g)", titlefont = list(size = 25), tickfont = list(size = 15)),
+         yaxis = list(title = "Flux (gm<sup>-2</sup>year<sup>-1</sup>)", titlefont = list(size = 25), tickfont = list(size = 15))) |> 
   hide_legend()
-
 
 # Yield graphs ------------------------------------------------------------
 
-## Yield graph for medium effort
+## Yield graph at estimated MSY
 sim_medium <- project(params, t_max = 100, t_save = 0.1, effort = 4.6)
 
 yield <- getYield(sim_medium)
@@ -442,16 +469,16 @@ yield_data <- data.frame(Time = times,
 plot_ly(yield_data) |> 
   filter(times >= 50) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
-  layout(yaxis = list(type = "log", exponentformat = 'power', 
-                      title = "Yield (g/year)",
+  layout(margin = list(l = 100, r = 20, b = 100, t = 10),
+         yaxis = list(type = "log", exponentformat = 'power',
                       showline = TRUE, showgrid = FALSE, mirror = TRUE,
                         range = c(-7, -2)),
-         xaxis = list(title = "Year", 
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
-         margin = list(b = 65, l = 70))
+         xaxis = list(showline = TRUE, showgrid = FALSE, mirror = TRUE)) |> 
+  layout(xaxis = list(title = "Yield (g/year)", titlefont = list(size = 25), tickfont = list(size = 15)),
+         yaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)))
 
 
-# yield with lower fishing effort
+# Yield graph with lower fishing effort
 sim_low_yield <- project(params, t_max = 100, t_save = 0.1, effort = 0.5)
 yield_lower <- getYield(sim_low_yield)
 
@@ -461,13 +488,13 @@ yield_lower_data <- data.frame(Time = times,
 plot_ly(yield_lower_data) |> 
   filter(times >= 50) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
-  layout(yaxis = list(type = "log", exponentformat = 'power', 
-                      title_text = "Yield (g/year)",
+  layout(margin = list(l = 100, r = 20, b = 100, t = 10),
+         yaxis = list(type = "log", exponentformat = 'power',
                       showline = TRUE, showgrid = FALSE, mirror = TRUE,
                       range = c(-7, -2)),
-         xaxis = list(title_text = "Year", 
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
-         margin = list(b = 65, l = 70))
+         xaxis = list(showline = TRUE, showgrid = FALSE, mirror = TRUE)) |> 
+  layout(xaxis = list(title = "Yield (g/year)", titlefont = list(size = 25), tickfont = list(size = 15)),
+         yaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)))
 
 
 
@@ -481,13 +508,13 @@ yield_heavy_data <- data.frame(Time = times,
 plot_ly(yield_heavy_data) |> 
   filter(times >= 50) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
-  layout(yaxis = list(type = "log", exponentformat = 'power', 
-                      title_text = "Yield (g/year)",
+  layout(margin = list(l = 100, r = 20, b = 100, t = 10),
+         yaxis = list(type = "log", exponentformat = 'power',
                       showline = TRUE, showgrid = FALSE, mirror = TRUE,
                       range = c(-7, -2)),
-         xaxis = list(title_text = "Year", 
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
-         margin = list(b = 65, l = 70))
+         xaxis = list(showline = TRUE, showgrid = FALSE, mirror = TRUE)) |> 
+  layout(xaxis = list(title = "Yield (g/year)", titlefont = list(size = 25), tickfont = list(size = 15)),
+         yaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)))
 
 
 
@@ -532,23 +559,23 @@ yield_fishing_data <- data.frame(Time = time,
 plot_ly(yield_fishing_data) |> 
   filter(time >= 150) |>
   add_lines(x = ~Time, y = ~Target.species) |> 
-  layout(yaxis = list(type = "log", exponentformat = 'power', 
-                      title_text = "Yield (g/year)",
+  layout(margin = list(l = 100, r = 20, b = 100, t = 10),
+         yaxis = list(type = "log", exponentformat = 'power',
                       showline = TRUE, showgrid = FALSE, mirror = TRUE,
                       range = c(-7, -2)),
-         xaxis = list(title_text = "Year",
-                      showline = TRUE, showgrid = FALSE, mirror = TRUE),
-         margin = list(b = 65, l = 70))
+         xaxis = list(showline = TRUE, showgrid = FALSE, mirror = TRUE)) |> 
+  layout(xaxis = list(title = "Yield (g/year)", titlefont = list(size = 25), tickfont = list(size = 15)),
+         yaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)))
 
 # changing effort over time
 effort_df <- melt(getEffort(sim_combined))
 
 plot_ly(effort_df) |> 
-  filter(time >= 100) |> 
+  filter(time >= 150) |> 
   add_lines(x = ~time, y = ~value) |> 
   layout(yaxis = list(title_text = "Effort",
                       showline = TRUE, showgrid = FALSE, mirror = TRUE),
-         xaxis = list(title_text = "Time (year)", range = c(100, 200),
+         xaxis = list(title_text = "Time (year)", range = c(150, 200),
                       showline = TRUE, showgrid = FALSE, mirror = TRUE),
          margin = list(b = 65, l = 70))
 
