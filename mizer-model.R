@@ -474,8 +474,8 @@ plot_ly(yield_data) |>
                       showline = TRUE, showgrid = FALSE, mirror = TRUE,
                         range = c(-7, -2)),
          xaxis = list(showline = TRUE, showgrid = FALSE, mirror = TRUE)) |> 
-  layout(xaxis = list(title = "Yield (g/year)", titlefont = list(size = 25), tickfont = list(size = 15)),
-         yaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)))
+  layout(xaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)),
+         yaxis = list(title = "Yield (g/year/m<sup>2</sup>)", titlefont = list(size = 25), tickfont = list(size = 15)))
 
 
 # Yield graph with lower fishing effort
@@ -493,8 +493,8 @@ plot_ly(yield_lower_data) |>
                       showline = TRUE, showgrid = FALSE, mirror = TRUE,
                       range = c(-7, -2)),
          xaxis = list(showline = TRUE, showgrid = FALSE, mirror = TRUE)) |> 
-  layout(xaxis = list(title = "Yield (g/year)", titlefont = list(size = 25), tickfont = list(size = 15)),
-         yaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)))
+  layout(xaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)),
+         yaxis = list(title = "Yield (g/year/m<sup>2</sup>)", titlefont = list(size = 25), tickfont = list(size = 15)))
 
 
 
@@ -513,8 +513,8 @@ plot_ly(yield_heavy_data) |>
                       showline = TRUE, showgrid = FALSE, mirror = TRUE,
                       range = c(-7, -2)),
          xaxis = list(showline = TRUE, showgrid = FALSE, mirror = TRUE)) |> 
-  layout(xaxis = list(title = "Yield (g/year)", titlefont = list(size = 25), tickfont = list(size = 15)),
-         yaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)))
+  layout(xaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)),
+         yaxis = list(title = "Yield (g/year/m<sup>2</sup>)", titlefont = list(size = 25), tickfont = list(size = 15)))
 
 
 
@@ -564,8 +564,8 @@ plot_ly(yield_fishing_data) |>
                       showline = TRUE, showgrid = FALSE, mirror = TRUE,
                       range = c(-7, -2)),
          xaxis = list(showline = TRUE, showgrid = FALSE, mirror = TRUE)) |> 
-  layout(xaxis = list(title = "Yield (g/year)", titlefont = list(size = 25), tickfont = list(size = 15)),
-         yaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)))
+  layout(xaxis = list(title = "Year", titlefont = list(size = 25), tickfont = list(size = 15)),
+         yaxis = list(title = "Yield (g/year/m<sup>2</sup>)", titlefont = list(size = 25), tickfont = list(size = 15)))
 
 # changing effort over time
 effort_df <- melt(getEffort(sim_combined))
